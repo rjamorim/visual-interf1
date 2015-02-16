@@ -3,10 +3,16 @@
 
 import cv2
 import numpy
+from copy import copy, deepcopy
 
 counter = 9
-seq = 0
+seq = 12
 pos = 0
+k = 0
+
+pattern = [[2, 3],     # 2nd quadrant, five fingers
+           [3, 1],     # 3rd quadrant, closed fist
+           [4, 2]]     # 4th quadrant, three fingers
 
 cap = cv2.VideoCapture(0)
 while cap.isOpened():
@@ -76,13 +82,10 @@ while cap.isOpened():
         # Each pattern is encoded as (x,y), where x is the quadrant in the image (1 is top left, 2 is top right,
         # 3 is bottom left and 4 is bottom right. y is the hand gesture: 1 is fist, 2 is three fingers - thumb,
         # index and middle -, 3 is five fingers.
-        pattern = [[2, 3],     # 2nd quadrant, five fingers
-                   [3, 1],     # 3rd quadrant, closed fist
-                   [4, 2]]     # 4th quadrant, three fingers
 
         flag = 0
 
-        if counter == 100:
+        if counter == 100 and k != 114:
             # These are very ugly nested IFs but they do work so...
             if pattern[pos][0] == 1:
                 if cx < 230 and cy < 180:
@@ -171,6 +174,39 @@ while cap.isOpened():
             cv2.imwrite("drawing" + str(seq) + ".jpg", drawing)
             cv2.imwrite("capture" + str(seq) + ".jpg", img)
             seq += 1
+        elif counter == 100 and k == 114:
+            # Here we create another password pattern. When the counter reaches 10, it captures the hand position and
+            # gesture and records it in a sequence.
+            pattern2 = [[0, 0],
+                        [0, 0],
+                        [0, 0]]
+
+            if cx < 230 and cy < 180:
+                pattern2[pos][0] == 1
+            elif cx > 400 and cy < 180:
+                pattern2[pos][0] == 2
+            elif cx < 230 and cy > 300:
+                pattern2[pos][0] == 3
+            elif cx > 400 and cy > 300:
+                pattern2[pos][0] == 4
+            else:
+                print "I coult not understand your hand position for sure. Please restart the gesture sequence"
+                pos = 0
+                continue
+
+            if point <= 2:
+                pattern2[pos][1] == 1
+            elif point >= 3 or point <= 4:
+                pattern2[pos][1] == 2
+            elif point >= 5:
+                pattern2[pos][1] == 3
+
+            pos += 1
+            if pos == 3:
+                k = 0
+                # We only copy the new pattern over the older one if it was successfully recorded
+                pattern = deepcopy(pattern2)
+                print "New password pattern recorded!"
 
         point = 0
     except AttributeError:
@@ -182,3 +218,6 @@ while cap.isOpened():
     k = cv2.waitKey(10)
     if k == 27: # Once you hit ESC, the program stops running
         break
+    if k == 114: # If you hit the "r" key, you can record a new password
+        print "Recording new password sequence"
+        pos = 0
